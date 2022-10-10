@@ -1,0 +1,22 @@
+Package: obisniche
+Title: Evaluate OBIS Environmental Niches
+Description: R tool for assessing uncertainties around qualities of observation for environmental niches using OBIS data.
+URL: https://github.com/kolive4/obis_thermal_niche
+Version: 0.1
+Depends:
+  R (>= 4.0)
+Imports:
+  utils,
+  rlang,
+  dplyr,
+  readr,
+  tidytable,
+  ggplot2,
+  robis,
+  rappdirs,
+  mapr
+Maintainer: Kyle Shehata Oliveira <kyle.oliveira@maine.edu>
+Author: Kyle Shehata Oliveira <kyle.oliveira@maine.edu>
+License: MIT + file LICENSE
+Encoding: UTF-8
+RoxygenNote: 7.1.2

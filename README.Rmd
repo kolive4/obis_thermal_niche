@@ -1,5 +1,13 @@
-obis_thermal_niche
-================
+---
+title: "obisniche"
+author: "Kyle Oliveira"
+date: "2022-10-10"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
 R tool for assessing uncertainties around qualities of observation for environmental niches using OBIS data.
 
@@ -17,13 +25,15 @@ R tool for assessing uncertainties around qualities of observation for environme
 
 ## Installation
 
+``` {r}
     remotes::install_github("kolive4/obis_thermal_niche")
+```
     
 ## Usage
 
 Retrieve a data set by species.
 
-``` r
+``` {r}
 suppressPackageStartupMessages({
   library(obisniche)
   library(dplyr)
@@ -37,25 +47,19 @@ suppressPackageStartupMessages({
 
 If you have downloaded multiple datasets you can list the ones you have.
 
-``` r
+``` {r}
 (spp < list_obis())
 ```
 
-  ## [1] "Carcharodon carcharias"
-  ## [2] "Prionace glauca"
-  ## [3] "Squalus acanthias subsp. acanthias Linnaeus, 1758"
+Now that you have a set of data files you can read them, optionally with a select number of [OBIS Darwin Core] (https://manual.obis.org/darwin_core.html) requiredand recommended fields.
 
-Now that you have a set of data files you can read them, optionally with
-a select number of [OBIS Darwin 
-Core] (https://manual.obis.org/darwin_core.html) required
-and recommended fields.
-
-``` r
+```{r}
 x <- read_obis(spp[1], dwc = TRUE)
 glimpse(x)
 ```
 
-
-
-
+And plot...
+```{r}
+plot_obis(x, what = 'ggplot')
+```
 
