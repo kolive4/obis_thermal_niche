@@ -41,10 +41,6 @@ If you have downloaded multiple datasets you can list the ones you have.
 (spp < list_obis())
 ```
 
-  ## [1] "Carcharodon carcharias"
-  ## [2] "Prionace glauca"
-  ## [3] "Squalus acanthias subsp. acanthias Linnaeus, 1758"
-
 Now that you have a set of data files you can read them, optionally with
 a select number of [OBIS Darwin 
 Core] (https://manual.obis.org/darwin_core.html) required
@@ -53,6 +49,12 @@ and recommended fields.
 ``` r
 x <- read_obis(spp[1], dwc = TRUE)
 glimpse(x)
+```
+
+And plot
+
+``` r
+plot_obis(x, what = 'ggplot')
 ```
 
 
