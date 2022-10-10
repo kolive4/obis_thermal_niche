@@ -39,16 +39,16 @@ suppressPackageStartupMessages({
   library(dplyr)
 })
 
-# make it quiet for th epurpose of the README markdown
-# x = fetch_obis(species = "Carcharodon carcharias",
-#                verbose = FALSE, progress = FALSE)  |>
-#   dplyr::glimpse()
+# make it quiet for the purpose of the README markdown
+ x = fetch_obis(species = "Carcharodon carcharias",
+                verbose = FALSE, progress = FALSE)  |>
+   dplyr::glimpse()
 ```
 
 If you have downloaded multiple datasets you can list the ones you have.
 
 ``` {r}
-(spp < list_obis())
+(spp <- list_obis())
 ```
 
 Now that you have a set of data files you can read them, optionally with a select number of [OBIS Darwin Core] (https://manual.obis.org/darwin_core.html) requiredand recommended fields.
