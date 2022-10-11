@@ -26,99 +26,46 @@ list_obis <- function(path = get_path(),
   ff
 }
 
-
-# # fetch occurrence data for given species from GBIF
-# # 
-# # @export
-# # @param species character, latin name of species to fetch
-# # @param cache logical, if true save results to cache
-# # @return data frame in the form of a tibble (or an error object if issues arise)
-# fetch_gbif = function(species = "Carcharodon carcharias", cache = TRUE){
-#   occurrence <- try(rgbif::occ_search(scientificName = species[1]))
-#   if (!inherits(occurrence, "try-error")){
-#     occurrence <- occurrence$data
-#     if(cache == TRUE){
-#       path <- get_path(paste0(species, ".csv.gz"))
-#       occurrence <- readr::write_csv(occurrence, path)
-#     }
-#   }
-#   return(occurrence)
-# }
-
-
-# species = "Squalus acanthias subsp. acanthias Linnaeus, 1758"
-
-#' Fetch occurrence data for given species from OBIS
+#' Fetch a species from OBIS
 #' 
 #' @export
-#' @param species character, latin name of species to fetch
-#' @param cache logical, if true save results to cache
-#' @param verbose logical, if true prints counter of progress
-#' @param progress logical, if true print progress bar and ignore verbose
-#' @return data frame in the form of a tibble
-fetch_obis = function(species = "Carcharodon carcharias", 
-                      cache = TRUE, 
-                      verbose = FALSE, 
-                      progress = !verbose){
+#' @param scientificname character, the Latin name for a species
+#' @param ... other arguments for \code{\link[robis]{occurrence}}
+#' @param save_file NA or a path specification to save the file
+#' @param template data frame defining minimal fields 
+#' @return tibble, possibly empty if a species is not found
+fetch_obis <- function(scientificname = 'Carcharodon carcharias', 
+                          save_file = file_name(scientificname),
+                          template = species_template(),
+                          ...){
   
-  if(progress == TRUE){
-    verbose = FALSE
+  autofill <- function(x, template = species_template()){
+    xnames <- colnames(x)
+    tnames <- colnames(template)
+    ix <- !(tnames %in% xnames)
+    if (any(ix)){
+      missingnames <- tnames[ix]
+      for (mn in missingnames) x[[mn]] = template[[mn]][1]
+    } 
+    for (nm in tnames) mode(x[[nm]]) <- mode(template[[nm]])
+    x |> dplyr::select(dplyr::all_of(tnames))
   }
   
-  DONE = FALSE
-  LIMIT = 500
-  CUR = 0
-  FROM = "obis"
-  
-  #x <- spocc::occ(query = species[1], limit = LIMIT, from = FROM, 
-  #                start = CUR, throw_warnings = FALSE)
-  x <- robis::occurrence(scientificName = species[1], limit = LIMIT, start = CUR)
-  
-  #COUNT = x[[FROM]]$meta$found
-  COUNT <- x$meta$count
-  NCHUNKS = ceiling(COUNT / LIMIT)
-  ICHUNK = 1
-  
-  xx = vector(mode = "list", length = NCHUNKS)
-  #xx[[ICHUNK]] <- x[[FROM]]
-  xx[[ICHUNK]] <- x
-  ICHUNK = ICHUNK + 1
-  CUR = CUR + LIMIT
-  
-  if(progress) pb = txtProgressBar(min = 0, max = NCHUNKS, initial = ICHUNK, style = 3) 
-  
-  while(ICHUNK <= NCHUNKS){
-    if(verbose){
-      cat(sprintf("%i:%i", ICHUNK, CUR))
-    }
-    if(progress) setTxtProgressBar(pb, ICHUNK)
-    #x <- spocc::occ(query = species[1], limit = LIMIT, 
-    #                from = FROM, start = CUR, 
-    #                throw_warnings = FALSE)
-    x <- robis::occurrence(scientificName = species[1], limit = LIMIT, start = CUR)
-    #xx[[ICHUNK]] <- x[[FROM]]
-    xx[[ICHUNK]] <- x
-    ICHUNK = ICHUNK + 1
-    CUR = CUR + LIMIT
+  x <- try(robis::occurrence(scientificname = scientificname[1], fields = names(template), ...))
+  if (!inherits(x, 'try-error') && nrow(x) > 0){
+    x <- dplyr::mutate(x, across(dplyr::everything(), as.character)) |>
+      autofill(template) |>
+      dplyr::mutate(eventDate = format(as.Date(substring(.data$eventDate, 1, nchar("YYYY-mm-dd")), 
+                                               format = "%Y-%m-%d"), 
+                                       format = "%Y-%m-%d")) |>
+      dplyr::filter(!grepl("void_", .data$id, fixed = TRUE))
   }
-  
-  if(progress) close(pb)
-  
-  occurrence = lapply(xx, 
-                      function(y){
-                        return(y$data |> 
-                                 dplyr::as_tibble() |> 
-                                 dplyr::select(-dplyr::any_of("networkKeys")))
-                      }) |>
-    dplyr::bind_rows()
-  
-  
-  if(cache == TRUE){
-    path <- get_path(paste0(species[1], ".csv.gz"))
-    occurrence <- readr::write_csv(occurrence, path)
+  if (!inherits(x, 'try-error') && nrow(x) > 0 && !is.na(save_file)){
+    x <- readr::write_csv(x, save_file)
   }
-  return(occurrence)
+  x
 }
+
 
 #' function to read obis with the option to fetch
 #' 
@@ -126,7 +73,7 @@ fetch_obis = function(species = "Carcharodon carcharias",
 #' @export
 #' @param species character, latin name of species
 #' @param refresh logical, if true fetch fresh set of data
-#' @return dwc logical, if TRUE trim to the recommended Darwin Core content
+#' @param dwc logical, if TRUE trim to the recommended Darwin Core content
 #' @return data frame in the form of a tibble
 read_obis = function(species = "Carcharodon carcharias", 
                      refresh = FALSE,
@@ -136,8 +83,8 @@ read_obis = function(species = "Carcharodon carcharias",
     x = fetch_obis(species = species)
   }
   else{
-    x <- #readr::read_csv(filename, show_col_types = FALSE)
-      tidytable::fread.(filename) |>
+    x <- readr::read_csv(filename, show_col_types = FALSE)
+      tidytable::fread(filename) |>
       dplyr::as_tibble()
   }
   if (dwc) x <- as_dwc(x)
@@ -222,4 +169,63 @@ as_dwc <- function(x, template = template_dwc(n=1)){
   y  
 }
 
+
+#' Generate a dummy template of data
+#' 
+#' @export
+#' @param n numeric, the number of rows to create
+#' @param eventDate_type character, what class should eventDate be?
+#' @return tibble
+species_template <- function(n = 1, eventDate_type = c("character", "date")[1]){
+  x <- dplyr::tibble(
+    id                 = paste("void", seq_len(n), sep = "_"),
+    scientificName     = "",
+    eventDate          = "",
+    decimalLongitude   = NA_real_,
+    decimalLatitude    = NA_real_,
+    depth              = NA_real_,
+    sst                = NA_real_,
+    sss                = NA_real_)
+  if (tolower(eventDate_type[1]) == "date"){
+    x <- dplyr::mutate(x, eventDate = Sys.Date())
+  }
+  x
+}
+
+#' Convert from file name to scientific_name
+#' 
+#' @export
+#' @param x chr, name of file
+#' @param ext chr, file extension to be removed
+#' @param sep chr, separator of file name
+#' @return character vector of scientific names
+scientific_name <- function(x = 'carcharodon_carcharias.csv.gz', 
+                            ext = '.csv.gz', 
+                            sep = '_'){
+  
+  x = basename(x)
+  x = sub(ext, '', x, fixed = TRUE)
+  x = paste0(toupper(substring(x, 1,1)),substring(x, 2))
+  x = gsub(sep," ", x, fixed = TRUE)
+  x
+}
+
+#' Convert from scientific name to file name
+#' 
+#' @param x chr, scientific name of species
+#' @param ext chr, file extension to be added
+#' @param sep chr, separator of file name (between genus and species)
+#' @param path chr, path of which file is stored
+#' @return character vector of file names
+file_name <- function(x = 'Carcharodon carcharias', 
+                      ext = '.csv.gz', 
+                      sep = "_", 
+                      path = get_path()){
+  
+  x = tolower(x)
+  x = gsub(" ", sep, x, fixed = TRUE)
+  x = paste0(x, ext)
+  x = file.path(path, x)
+  x
+}
 

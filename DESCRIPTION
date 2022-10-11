@@ -14,9 +14,10 @@ Imports:
   ggplot2,
   robis,
   rappdirs,
-  mapr
+  mapr,
+  R.utils
 Maintainer: Kyle Shehata Oliveira <kyle.oliveira@maine.edu>
 Author: Kyle Shehata Oliveira <kyle.oliveira@maine.edu>
 License: MIT + file LICENSE
 Encoding: UTF-8
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.0
